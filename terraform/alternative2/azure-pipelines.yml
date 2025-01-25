@@ -1,0 +1,53 @@
+trigger:
+  - main
+
+stages:
+  - stage: Build
+    displayName: "Build Stage"
+    jobs:
+      - job: Build
+        steps:
+          - checkout: self
+          - script: echo "Build successful!"
+            displayName: "Run Build Step"
+
+  - stage: TerraformValidate
+    displayName: "Terraform Validate"
+    dependsOn: Build
+    jobs:
+      - job: Validate
+        steps:
+          - checkout: self
+          - script: terraform validate
+            displayName: "Validate Terraform Configuration"
+
+  - stage: TerraformPlan
+    displayName: "Terraform Plan"
+    dependsOn: TerraformValidate
+    jobs:
+      - job: Plan
+        steps:
+          - checkout: self
+          - script: terraform plan -out=tfplan
+            displayName: "Generate Terraform Plan"
+
+  - stage: ManualValidation
+    displayName: "Manual Validation"
+    dependsOn: TerraformPlan
+    jobs:
+      - job: Approve
+        steps:
+          - task: ManualValidation@0
+            inputs:
+              notifyUsers: 'ingmarsegu@example.com'
+              instructions: "Please review and approve the Terraform plan."
+
+  - stage: TerraformApply
+    displayName: "Terraform Apply"
+    dependsOn: ManualValidation
+    jobs:
+      - job: Apply
+        steps:
+          - checkout: self
+          - script: terraform apply -auto-approve tfplan
+            displayName: "Apply Terraform Changes"
